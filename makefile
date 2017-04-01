@@ -25,7 +25,7 @@ ifdef Debug
 endif
 
 
-all:finddupe.exe myglob.exe
+all:finddupe.exe
 
 OBJ = .
 
@@ -38,7 +38,7 @@ OBJECTS_FINDDUPE = $(OBJ)\finddupe.o \
 finddupe.exe: $(OBJECTS_FINDDUPE)
 	$(LINKER) $(LDFLAGS) -o $@ $(OBJECTS_FINDDUPE)
 
-# for testing
+# for testing only
 myglob.exe: myglob.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -DDEBUGGING -o $@ $<
 

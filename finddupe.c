@@ -5,6 +5,7 @@
 // Version 1.23
 //
 // Matthias Wandel Oct 2006 - Aug 2010
+// MinGW Unicode port Jarek Jurasz March 2017
 //--------------------------------------------------------------------------
 
 #define VERSION _T("1.24")

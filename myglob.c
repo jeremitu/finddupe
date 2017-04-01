@@ -4,10 +4,11 @@
 // Tries to do pattern matching to produce similar results as Unix, but using
 // the Windows _findfirst to do all the pattern matching.
 //
-// Also hadles recursive directories - "**" path component expands into
+// Also handles recursive directories - "**" path component expands into
 // any levels of subdirectores (ie c:\**\*.c matches ALL .c files on drive c:)
 //
 // Matthias Wandel Nov 5 2000 - March 2009
+// MinGW Unicode port Jarek Jurasz March 2017
 //--------------------------------------------------------------------------------
 #include <stdio.h>
 #include <stdlib.h>
