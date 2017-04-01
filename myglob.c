@@ -311,7 +311,7 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
 //--------------------------------------------------------------------------------
 // The main program.
 //--------------------------------------------------------------------------------
-int main (int argc, TCHAR **argv)
+int _tmain (int argc, TCHAR **argv)
 {
     int argn;
     TCHAR * arg;

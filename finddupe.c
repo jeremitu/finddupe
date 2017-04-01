@@ -93,7 +93,7 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
 //--------------------------------------------------------------------------
 // Calculate some 64-bit file signature.  CRC and a checksum
 //--------------------------------------------------------------------------
-static void CalcCrc(Checksum_t * Check, TCHAR * Data, unsigned NumBytes)
+static void CalcCrc(Checksum_t * Check, char * Data, unsigned NumBytes)
 {
     unsigned a;
     unsigned Reg, Sum;
@@ -420,7 +420,7 @@ static void ProcessFile(const TCHAR * FileName)
                 memset(ShowName, ' ', sizeof(ShowName));
                 ShowName[54] = 0;
                 if (l > 50) l = 51;
-                memcpy(ShowName, FileName, l);
+                memcpy(ShowName, FileName, l*sizeof(TCHAR));
                 if (l >= 51) _tcscpy(ShowName+50,_T("..."));
 
                 _tprintf(_T("Scanned %4d files: %s\r"),FilesMatched, ShowName);
@@ -504,7 +504,7 @@ cant_read_file:
 
     if (!HardlinkSearchMode){
         FILE * infile;
-        TCHAR FileBuffer[BYTES_DO_CHECKSUM_OF];
+        char FileBuffer[BYTES_DO_CHECKSUM_OF];
         unsigned BytesRead, BytesToRead;
         memset(&CheckSum, 0, sizeof(CheckSum));
 
@@ -585,7 +585,7 @@ static void Usage (void)
 //--------------------------------------------------------------------------
 // The main program.
 //--------------------------------------------------------------------------
-int main (int argc, TCHAR **argv)
+int _tmain (int argc, TCHAR **argv)
 {
     int argn;
     TCHAR * arg;
