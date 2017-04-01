@@ -3,12 +3,12 @@
 // Also includes a separate option to scan for and enumerate hardlinks in the search space.
 //
 // Version 1.23
-// 
+//
 // Matthias Wandel Oct 2006 - Aug 2010
 //--------------------------------------------------------------------------
 
-#define VERSION "1.23"
-
+#define VERSION _T("1.24")
+#include "tchar.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -21,7 +21,7 @@
 #include <process.h>
 #include <io.h>
 #include <sys/utime.h>
-#define WIN32_LEAN_AND_MEAN // To keep windows.h bloat down.    
+#define WIN32_LEAN_AND_MEAN // To keep windows.h bloat down.
 #define _WIN32_WINNT 0x0500
 #include <windows.h>
 #include <direct.h>
@@ -43,10 +43,10 @@ typedef struct {
     struct {
         int High;
         int Low;
-    }FileIndex;    
-    int NumLinks; 
+    }FileIndex;
+    int NumLinks;
     unsigned FileSize;
-    char * FileName;
+    TCHAR * FileName;
     int Larger; // Child index for larger child
     int Smaller;// Child index for smaller child
 }FileData_t;
@@ -71,7 +71,7 @@ struct {
 
 // Parameters for what to do
 FILE * BatchFile = NULL;        // Output a batch file
-char * BatchFileName = NULL;
+TCHAR * BatchFileName = NULL;
 
 int PrintFileSigs;         // Print signatures of files
 int PrintDuplicates;       // Print duplicates
@@ -87,13 +87,13 @@ int SkipZeroLength = 1;    // Ignore zero length files.
 int ProgressIndicatorVisible = 0; // Weither a progress indicator needs to be overwritten.
 int FollowReparse = 0;     // Wether to follow reparse points (like unix softlinks for NTFS)
 
-int MyGlob(const char * Pattern, int FollowReparse, void (*FileFuncParm)(const char * FileName));
+int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const TCHAR * FileName));
 
 
 //--------------------------------------------------------------------------
 // Calculate some 64-bit file signature.  CRC and a checksum
 //--------------------------------------------------------------------------
-static void CalcCrc(Checksum_t * Check, char * Data, unsigned NumBytes)
+static void CalcCrc(Checksum_t * Check, TCHAR * Data, unsigned NumBytes)
 {
     unsigned a;
     unsigned Reg, Sum;
@@ -115,7 +115,7 @@ static void CalcCrc(Checksum_t * Check, char * Data, unsigned NumBytes)
 void ClearProgressInd(void)
 {
     if (ProgressIndicatorVisible){
-        printf("                                                                          \r");
+        _tprintf(_T("                                                                          \r"));
         ProgressIndicatorVisible = 0;
     }
 }
@@ -123,9 +123,9 @@ void ClearProgressInd(void)
 //--------------------------------------------------------------------------
 // Escape names for batch files: % turns into %%
 //--------------------------------------------------------------------------
-char * EscapeBatchName(char * Name)
+TCHAR * EscapeBatchName(TCHAR * Name)
 {
-    static char EscName[_MAX_PATH*2];
+    static TCHAR EscName[_MAX_PATH*2];
     int a,b;
     b = 0;
     for (a=0;;){
@@ -147,16 +147,16 @@ static int EliminateDuplicate(FileData_t ThisFile, FileData_t DupeOf)
     FILE * File1, * File2;
     unsigned BytesLeft;
     unsigned BytesToRead;
-    char Buf1[CHUNK_SIZE], Buf2[CHUNK_SIZE];
+    TCHAR Buf1[CHUNK_SIZE], Buf2[CHUNK_SIZE];
     int IsDuplicate = 1;
     int Hardlinked = 0;
     int IsReadonly;
-    struct stat FileStat;
+    struct _stat FileStat;
 
     if (ThisFile.FileSize != DupeOf.FileSize) return 0;
 
     Hardlinked = 0;
-    if (DupeOf.NumLinks && memcmp(&ThisFile.FileIndex, &DupeOf.FileIndex, 8) == 0){
+    if (DupeOf.NumLinks && memcmp(&ThisFile.FileIndex, &DupeOf.FileIndex, sizeof(ThisFile.FileIndex)) == 0){
         Hardlinked = 1;
         goto dont_read;
     }
@@ -166,11 +166,11 @@ static int EliminateDuplicate(FileData_t ThisFile, FileData_t DupeOf)
         return 0;
     }
 
-    File1 = fopen(ThisFile.FileName, "rb");
+    File1 = _tfopen(ThisFile.FileName, _T("rb"));
     if (File1 == NULL){
         return 0;
     }
-    File2 = fopen(DupeOf.FileName, "rb");
+    File2 = _tfopen(DupeOf.FileName, _T("rb"));
     if (File2 == NULL){
         fclose(File1);
         return 0;
@@ -184,12 +184,12 @@ static int EliminateDuplicate(FileData_t ThisFile, FileData_t DupeOf)
 
         if (fread(Buf1, 1, BytesToRead, File1) != BytesToRead){
             ClearProgressInd();
-            fprintf(stderr, "Error doing full file read on '%s'\n", ThisFile.FileName);
+            _ftprintf(stderr, _T("Error doing full file read on '%s'\n"), ThisFile.FileName);
         }
 
         if (fread(Buf2, 1, BytesToRead, File2) != BytesToRead){
             ClearProgressInd();
-            fprintf(stderr, "Error doing full file read on '%s'\n", DupeOf.FileName);
+            _ftprintf(stderr, _T("Error doing full file read on '%s'\n"), DupeOf.FileName);
         }
 
         BytesLeft -= BytesToRead;
@@ -215,19 +215,19 @@ dont_read:
     if (PrintDuplicates){
         if (!HardlinkSearchMode){
             ClearProgressInd();
-            printf("Duplicate: '%s'\n",DupeOf.FileName);
-            printf("With:      '%s'\n",ThisFile.FileName);
+            _tprintf(_T("Duplicate: '%s'\n"),DupeOf.FileName);
+            _tprintf(_T("With:      '%s'\n"),ThisFile.FileName);
             if (Hardlinked){
                 // If the files happen to be hardlinked, show that.
-                printf("    (hardlinked instances of same file)\n");
+                _tprintf(_T("    (hardlinked instances of same file)\n"));
             }
         }
     }
 
 
-    if (stat(ThisFile.FileName, &FileStat) != 0){
+    if (_tstat(ThisFile.FileName, &FileStat) != 0){
         // oops!
-        fprintf(stderr, "stat failed on '%s'\n", ThisFile.FileName);
+        _ftprintf(stderr, _T("_tstat failed on '%s'\n"), ThisFile.FileName);
         exit (EXIT_FAILURE);
     }
     IsReadonly = (FileStat.st_mode & S_IWUSR) ? 0 : 1;
@@ -236,65 +236,65 @@ dont_read:
         // Readonly file.
         if (!DoReadonly){
             ClearProgressInd();
-            printf("Skipping duplicate readonly file '%s'\n", 
+            _tprintf(_T("Skipping duplicate readonly file '%s'\n"),
                         ThisFile.FileName);
             return 1;
         }
         if (MakeHardLinks || DelDuplicates){
             // Make file read/write so we can delete it.
             // We sort of assume we own the file.  Otherwise, not much we can do.
-            chmod(ThisFile.FileName, FileStat.st_mode | S_IWUSR);
+            _tchmod(ThisFile.FileName, FileStat.st_mode | S_IWUSR);
         }
     }
 
     if (BatchFile){
         // put command in batch file
-        fprintf(BatchFile, "del %s \"%s\"\n",IsReadonly ? "/F":"", 
+        _ftprintf(BatchFile, _T("del %s \"%s\"\n"),IsReadonly ? _T("/F"):_T(""),
                 EscapeBatchName(ThisFile.FileName));
         if (!DelDuplicates){
-            fprintf(BatchFile, "fsutil hardlink create \"%s\" \"%s\"\n",
+            _ftprintf(BatchFile, _T("fsutil hardlink create \"%s\" \"%s\"\n"),
                     ThisFile.FileName, DupeOf.FileName);
             if (IsReadonly){
                 // If original was readonly, restore that attribute
-                fprintf(BatchFile, "attrib +r \"%s\"\n", ThisFile.FileName);
+                _ftprintf(BatchFile, _T("attrib +r \"%s\"\n"), ThisFile.FileName);
             }
         }else{
-            fprintf(BatchFile, "rem duplicate of \"%s\"\n", DupeOf.FileName);
+            _ftprintf(BatchFile, _T("rem duplicate of \"%s\"\n"), DupeOf.FileName);
         }
 
     }else if (MakeHardLinks || DelDuplicates){
         if (MakeHardLinks && Hardlinked) return 0; // Nothign to do.
 
-        if (_unlink(ThisFile.FileName)){
+        if (_tunlink(ThisFile.FileName)){
             ClearProgressInd();
-            fprintf(stderr, "Delete of '%s' failed\n", DupeOf.FileName);
+            _ftprintf(stderr, _T("Delete of '%s' failed\n"), DupeOf.FileName);
             exit (EXIT_FAILURE);
         }
         if (MakeHardLinks){
             if (CreateHardLink(ThisFile.FileName, DupeOf.FileName, NULL) == 0){
                 // Uh-oh.  Better stop before we mess up more stuff!
                 ClearProgressInd();
-                fprintf(stderr, "Create hard link from '%s' to '%s' failed\n",
+                _ftprintf(stderr, _T("Create hard link from '%s' to '%s' failed\n"),
                         DupeOf.FileName, ThisFile.FileName);
                 exit(EXIT_FAILURE);
             }
 
             {
                 // set Unix access rights and time to new file
-                struct utimbuf mtime;
-                chmod(ThisFile.FileName, FileStat.st_mode);
+                struct _utimbuf mtime;
+                _tchmod(ThisFile.FileName, FileStat.st_mode);
 
                 // Set mod time to original file's
                 mtime.actime = FileStat.st_mtime;
                 mtime.modtime = FileStat.st_mtime;
-            
-                utime(ThisFile.FileName, &mtime);
+
+                _tutime(ThisFile.FileName, &mtime);
             }
             ClearProgressInd();
-            printf("    Created hardlink\n");
+            _tprintf(_T("    Created hardlink\n"));
         }else{
             ClearProgressInd();
-            printf("    Deleted duplicate\n");
+            _tprintf(_T("    Deleted duplicate\n"));
         }
     }
     return 2;
@@ -356,7 +356,7 @@ static void CheckDuplicate(FileData_t ThisFile)
         NumAllocated = NumAllocated + NumAllocated/2;
         FileData = realloc(FileData, sizeof(FileData_t) * NumAllocated);
         if (FileData == NULL){
-            fprintf(stderr, "Malloc failure");
+            _ftprintf(stderr, _T("Malloc failure"));
             exit(EXIT_FAILURE);
         }
     }
@@ -383,16 +383,16 @@ static void WalkTree(int index, int LinksFirst, int GroupLen)
             WalkTree(FileData[index].Larger,-1,0);
         }
     }
-    printf("\nHardlink group, %d of %d hardlinked instances found in search tree:\n", GroupLen+1, FileData[index].NumLinks);
+    _tprintf(_T("\nHardlink group, %d of %d hardlinked instances found in search tree:\n"), GroupLen+1, FileData[index].NumLinks);
     t = LinksFirst >= 0 ? LinksFirst : index;
     for (a=0;a<=GroupLen;a++){
-        printf("  \"%s\"\n",FileData[t].FileName);
+        _tprintf(_T("  \"%s\"\n"),FileData[t].FileName);
         t = FileData[t].Larger;
     }
 
     DupeStats.HardlinkGroups += 1;
 
-not_end:    
+not_end:
     if (FileData[index].Smaller >= 0){
         WalkTree(FileData[index].Smaller,-1,0);
     }
@@ -401,11 +401,11 @@ not_end:
 //--------------------------------------------------------------------------
 // Do selected operations to one file at a time.
 //--------------------------------------------------------------------------
-static void ProcessFile(const char * FileName)
+static void ProcessFile(const TCHAR * FileName)
 {
     unsigned FileSize;
     Checksum_t CheckSum;
-    struct stat FileStat;
+    struct _stat FileStat;
 
     FileData_t ThisFile;
     memset(&ThisFile, 0, sizeof(ThisFile));
@@ -415,15 +415,15 @@ static void ProcessFile(const char * FileName)
         Now = GetTickCount();
         if ((unsigned)(Now-LastPrint) > 200){
             if (ShowProgress){
-                char ShowName[55];
-                int l = strlen(FileName);
+                TCHAR ShowName[55];
+                int l = _tcslen(FileName);
                 memset(ShowName, ' ', sizeof(ShowName));
                 ShowName[54] = 0;
                 if (l > 50) l = 51;
                 memcpy(ShowName, FileName, l);
-                if (l >= 51) memcpy(ShowName+50,"...",4);
+                if (l >= 51) _tcscpy(ShowName+50,_T("..."));
 
-                printf("Scanned %4d files: %s\r",FilesMatched, ShowName);
+                _tprintf(_T("Scanned %4d files: %s\r"),FilesMatched, ShowName);
                 LastPrint = Now;
                 ProgressIndicatorVisible = 1;
             }
@@ -433,9 +433,9 @@ static void ProcessFile(const char * FileName)
 
     FilesMatched += 1;
 
-    if (BatchFileName && strcmp(FileName, BatchFileName) == 0) return;
+    if (BatchFileName && _tcscmp(FileName, BatchFileName) == 0) return;
 
-    if (stat(FileName, &FileStat) != 0){
+    if (_tstat(FileName, &FileStat) != 0){
         // oops!
         goto cant_read_file;
     }
@@ -455,7 +455,7 @@ static void ProcessFile(const char * FileName)
     {
         HANDLE FileHandle;
         BY_HANDLE_FILE_INFORMATION FileInfo;
-        FileHandle = CreateFile(FileName, 
+        FileHandle = CreateFile(FileName,
                         GENERIC_READ,         // dwDesiredAccess
                         FILE_SHARE_READ,      // dwShareMode
                         NULL,                 // Security attirbutes
@@ -467,7 +467,7 @@ cant_read_file:
             DupeStats.CantReadFiles += 1;
             if (!HideCantReadMessage){
                 ClearProgressInd();
-                fprintf(stderr,"Could not read '%s'\n",FileName);
+                _ftprintf(stderr,_T("Could not read '%s'\n"),FileName);
             }
             return;
         }
@@ -478,7 +478,7 @@ cant_read_file:
 
         if (Verbose){
             ClearProgressInd();
-            printf("Hardlinked (%d links) node=%08x %08x: %s\n",FileInfo.nNumberOfLinks, 
+            _tprintf(_T("Hardlinked (%d links) node=%08x %08x: %s\n"),FileInfo.nNumberOfLinks,
                 FileInfo.nFileIndexHigh, FileInfo.nFileIndexLow, FileName);
         }
 
@@ -487,7 +487,7 @@ cant_read_file:
             return;
         }
 
-        //printf("    Info:  Index: %08x %08x\n",FileInfo.nFileIndexHigh, FileInfo.nFileIndexLow);
+        //_tprintf(_T("    Info:  Index: %08x %08x\n"),FileInfo.nFileIndexHigh, FileInfo.nFileIndexLow);
 
         // Use the file index (which is NTFS equivalent of the iNode) instead of the CRC.
         ThisFile.FileIndex.Low      = FileInfo.nFileIndexLow;
@@ -504,27 +504,27 @@ cant_read_file:
 
     if (!HardlinkSearchMode){
         FILE * infile;
-        unsigned char FileBuffer[BYTES_DO_CHECKSUM_OF];
+        TCHAR FileBuffer[BYTES_DO_CHECKSUM_OF];
         unsigned BytesRead, BytesToRead;
         memset(&CheckSum, 0, sizeof(CheckSum));
 
-        infile = fopen(FileName, "rb");
+        infile = _tfopen(FileName, _T("rb"));
 
         if (infile == NULL) {
             if (!HideCantReadMessage){
                 ClearProgressInd();
-                fprintf(stderr, "can't open '%s'\n", FileName);
+                _ftprintf(stderr, _T("can't open '%s'\n"), FileName);
             }
             return;
         }
-    
+
         BytesToRead = FileSize;
         if (BytesToRead > BYTES_DO_CHECKSUM_OF) BytesToRead = BYTES_DO_CHECKSUM_OF;
         BytesRead = fread(FileBuffer, 1, BytesToRead, infile);
         if (BytesRead != BytesToRead){
             if (!HideCantReadMessage){
                 ClearProgressInd();
-                fprintf(stderr, "file read problem on '%s'\n", FileName);
+                _ftprintf(stderr,_T("file read problem on '%s'\n"), FileName);
             }
             return;
         }
@@ -535,14 +535,14 @@ cant_read_file:
         CheckSum.Sum += FileSize;
         if (PrintFileSigs){
             ClearProgressInd();
-            printf("%08x%08x %10d %s\n",CheckSum.Crc, CheckSum.Sum, FileSize, FileName);
+            _tprintf(_T("%08x%08x %10d %s\n"),CheckSum.Crc, CheckSum.Sum, FileSize, FileName);
         }
 
         ThisFile.Checksum = CheckSum;
         ThisFile.FileSize = FileSize;
     }
 
-    ThisFile.FileName = strdup(FileName); // allocate the string last, so 
+    ThisFile.FileName = _tcsdup(FileName); // allocate the string last, so
                                           // we don't waste memory on errors.
     CheckDuplicate(ThisFile);
 }
@@ -552,9 +552,9 @@ cant_read_file:
 //--------------------------------------------------------------------------
 static void Usage (void)
 {
-    printf("finddupe v"VERSION" compiled "__DATE__"\n");
-    printf("Usage: finddupe [options] [-ref] <filepat> [filepat]...\n");
-    printf("Options:\n"
+    _tprintf(_T("finddupe v"VERSION" compiled "__DATE__"\n"));
+    _tprintf(_T("Usage: finddupe [options] [-ref] <filepat> [filepat]...\n"));
+    _tprintf(_T("Options:\n"
            " -bat <file.bat> Create batch file with commands to do the hard\n"
            "                 linking.  run batch file afterwards to do it\n"
            " -hardlink       Create hardlinks.  Works on NTFS file systems only.\n"
@@ -577,21 +577,21 @@ static void Usage (void)
            "                  c:\\**\\*.jpg  Match only .jpg files on drive C\n"
            "                  **\\foo\\**    Match any path with component foo\n"
            "                                from current directory down\n"
-           
-           );
+
+           ));
     exit(EXIT_FAILURE);
 }
 
 //--------------------------------------------------------------------------
 // The main program.
 //--------------------------------------------------------------------------
-int main (int argc, char **argv)
+int main (int argc, TCHAR **argv)
 {
     int argn;
-    char * arg;
-    char DefaultDrive;
-    char DriveUsed = '\0';
-    
+    TCHAR * arg;
+    TCHAR DefaultDrive;
+    TCHAR DriveUsed = '\0';
+
     PrintDuplicates = 1;
     PrintFileSigs = 0;
     HardlinkSearchMode = 0;
@@ -601,58 +601,58 @@ int main (int argc, char **argv)
         arg = argv[argn];
         if (arg[0] != '-') break; // Filenames from here on.
 
-        if (!strcmp(arg,"-h")){
+        if (!_tcscmp(arg,_T("-h"))){
             Usage();
             exit(EXIT_FAILURE);
 
-        }else if (!strcmp(arg,"-bat")){
+        }else if (!_tcscmp(arg,_T("-bat"))){
             BatchFileName = argv[++argn];
-        }else if (!strcmp(arg,"-v")){
+        }else if (!_tcscmp(arg,_T("-v"))){
             PrintDuplicates = 1;
             PrintFileSigs = 1;
             Verbose = 1;
             HideCantReadMessage = 0;
-        }else if (!strcmp(arg,"-sigs")){
+        }else if (!_tcscmp(arg,_T("-sigs"))){
             PrintDuplicates = 0;
             PrintFileSigs = 1;
-        }else if (!strcmp(arg,"-hardlink")){
+        }else if (!_tcscmp(arg,_T("-hardlink"))){
             MakeHardLinks = 1;
-        }else if (!strcmp(arg,"-del")){
+        }else if (!_tcscmp(arg,_T("-del"))){
             DelDuplicates = 1;
-        }else if (!strcmp(arg,"-rdonly")){
+        }else if (!_tcscmp(arg,_T("-rdonly"))){
             DoReadonly = 1;
-        }else if (!strcmp(arg,"-listlink")){
+        }else if (!_tcscmp(arg,_T("-listlink"))){
             HardlinkSearchMode = 1;
-        }else if (!strcmp(arg,"-ref")){
+        }else if (!_tcscmp(arg,_T("-ref"))){
             break;
-        }else if (!strcmp(arg,"-z")){
+        }else if (!_tcscmp(arg,_T("-z"))){
             SkipZeroLength = 0;
-        }else if (!strcmp(arg,"-u")){
+        }else if (!_tcscmp(arg,_T("-u"))){
             HideCantReadMessage = 1;
-        }else if (!strcmp(arg,"-p")){
+        }else if (!_tcscmp(arg,_T("-p"))){
             ShowProgress = 0;
-        }else if (!strcmp(arg,"-j")){
+        }else if (!_tcscmp(arg,_T("-j"))){
             FollowReparse = 1;
         }else{
-            printf("Argument '%s' not understood.  Use -h for help.\n",arg);
+            _tprintf(_T("Argument '%s' not understood.  Use -h for help.\n"),arg);
             exit(-1);
         }
     }
 
     if (argn > argc){
-        fprintf(stderr, "Missing argument!  Use -h for help\n");
+        _ftprintf(stderr, _T("Missing argument!  Use -h for help\n"));
         exit(EXIT_FAILURE);
     }
 
     if (argn == argc){
-        fprintf(stderr, "No files to process.   Use -h for help\n");
+        _ftprintf(stderr, _T("No files to process.   Use -h for help\n"));
         exit(EXIT_FAILURE);
     }
 
     if (HardlinkSearchMode){
         if (BatchFileName || MakeHardLinks || DelDuplicates || DoReadonly || BatchFileName){
-            fprintf(stderr, "listlink option is not valid with any other"
-                " options other than -v\n");            
+            _ftprintf(stderr, _T("listlink option is not valid with any other"
+                " options other than -v\n"));
             exit(EXIT_FAILURE);
         }
     }
@@ -661,35 +661,35 @@ int main (int argc, char **argv)
     NumAllocated = 1024;
     FileData = malloc(sizeof(FileData_t)*1024);
     if (FileData == NULL){
-        fprintf(stderr, "Malloc failure");
+        _ftprintf(stderr, _T("Malloc failure"));
         exit(EXIT_FAILURE);
     }
 
     if (BatchFileName){
-        BatchFile = fopen(BatchFileName, "w");
+        BatchFile = _tfopen(BatchFileName, _T("w"));
         if (BatchFile == NULL){
-            printf("Unable to open task batch file '%s'\n",BatchFileName);
+            _tprintf(_T("Unable to open task batch file '%s'\n"),BatchFileName);
         }
-        fprintf(BatchFile, "@echo off\n");
-        fprintf(BatchFile, "REM Batch file for replacing duplicates with hard links\n");
-        fprintf(BatchFile, "REM created by finddupe program\n\n");
+        _ftprintf(BatchFile, _T("@echo off\n"));
+        _ftprintf(BatchFile, _T("REM Batch file for replacing duplicates with hard links\n"));
+        _ftprintf(BatchFile, _T("REM created by finddupe program\n\n"));
     }
 
     memset(&DupeStats, 0, sizeof(DupeStats));
 
     {
-        char CurrentDir[_MAX_PATH];
-        getcwd(CurrentDir, sizeof(CurrentDir));
-        DefaultDrive = tolower(CurrentDir[0]);
+        TCHAR CurrentDir[_MAX_PATH];
+        _tgetcwd(CurrentDir, sizeof(CurrentDir));
+        DefaultDrive = _totlower(CurrentDir[0]);
     }
 
 
     for (;argn<argc;argn++){
         int a;
-        char Drive;
+        TCHAR Drive;
         FilesMatched = 0;
 
-        if (!strcmp(argv[argn],"-ref")){
+        if (!_tcscmp(argv[argn],_T("-ref"))){
             ReferenceFiles = 1;
             argn += 1;
             if (argn >= argc) continue;
@@ -703,14 +703,14 @@ int main (int argc, char **argv)
         }
 
         if (argv[argn][1] == ':'){
-            Drive = tolower(argv[argn][0]);
+            Drive = _totlower(argv[argn][0]);
         }else{
             Drive = DefaultDrive;
         }
         if (DriveUsed == '\0') DriveUsed = Drive;
         if (DriveUsed != Drive){
             if (MakeHardLinks){
-                fprintf(stderr, "Error: Hardlinking across different drives not possible\n");
+                _ftprintf(stderr, _T("Error: Hardlinking across different drives not possible\n"));
                 return EXIT_FAILURE;
             }
         }
@@ -720,19 +720,19 @@ int main (int argc, char **argv)
         MyGlob(argv[argn], FollowReparse, ProcessFile);
 
         if (!FilesMatched){
-            fprintf(stderr, "Error: No files matched '%s'\n",argv[argn]);
+            _ftprintf(stderr, _T("Error: No files matched '%s'\n"), argv[argn]);
         }
     }
 
     if (HardlinkSearchMode){
         ClearProgressInd();
-        printf("\n");
+        _tprintf(_T("\n"));
         DupeStats.HardlinkGroups = 0;
         WalkTree(0,-1,0);
-        printf("\nNumber of hardlink groups found: %d\n",DupeStats.HardlinkGroups);
+        _tprintf(_T("\nNumber of hardlink groups found: %d\n"),DupeStats.HardlinkGroups);
     }else{
         if (DupeStats.TotalFiles == 0){
-            fprintf(stderr, "No files to process\n");
+            _ftprintf(stderr, _T("No files to process\n"));
             return EXIT_FAILURE;
         }
 
@@ -743,17 +743,17 @@ int main (int argc, char **argv)
 
         // Print summary data
         ClearProgressInd();
-        printf("\n");
-        printf("Files: %8u kBytes in %5d files\n", 
+        _tprintf(_T("\n"));
+        _tprintf(_T("Files: %8u kBytes in %5d files\n"),
                 (unsigned)(DupeStats.TotalBytes/1000), DupeStats.TotalFiles);
-        printf("Dupes: %8u kBytes in %5d files\n", 
+        _tprintf(_T("Dupes: %8u kBytes in %5d files\n"),
                 (unsigned)(DupeStats.DuplicateBytes/1000), DupeStats.DuplicateFiles);
     }
     if (DupeStats.ZeroLengthFiles){
-        printf("  %d files of zero length were skipped\n",DupeStats.ZeroLengthFiles);
+        _tprintf(_T("  %d files of zero length were skipped\n"),DupeStats.ZeroLengthFiles);
     }
     if (DupeStats.CantReadFiles){
-        printf("  %d files could not be opened\n",DupeStats.CantReadFiles);
+        _tprintf(_T("  %d files could not be opened\n"),DupeStats.CantReadFiles);
     }
 
     return EXIT_SUCCESS;
