@@ -418,7 +418,11 @@ static void ProcessFile(const TCHAR * FileName)
             if (ShowProgress){
                 TCHAR ShowName[55];
                 int l = _tcslen(FileName);
-                memset(ShowName, ' ', sizeof(ShowName));
+#ifdef _UNICODE
+                wmemset(ShowName, ' ', 54);
+#else
+                memset(ShowName, ' ', 54);
+#endif
                 ShowName[54] = 0;
                 if (l > 50) l = 51;
                 memcpy(ShowName, FileName, l*sizeof(TCHAR));
