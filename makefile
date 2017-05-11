@@ -7,12 +7,10 @@
 Unicode=1
 #Debug=1
 
-
 CC=gcc
 CFLAGS=-O3 -Wall
 LINKER=gcc
 LDFLAGS=
-
 
 ifdef Unicode
   CFLAGS += -D_UNICODE -DUNICODE
@@ -24,23 +22,31 @@ ifdef Debug
   LDFLAGS += -g
 endif
 
+# needs a different DevKit for 64-bit build
+all: finddupe.exe #finddupe64.exe
 
-all:finddupe.exe
+OBJ =
 
-OBJ = .
+OBJECTS_FINDDUPE = $(OBJ)finddupe.o \
+                $(OBJ)myglob.o \
 
-OBJECTS_FINDDUPE = $(OBJ)\finddupe.o \
-                $(OBJ)\myglob.o \
+OBJECTS_FINDDUPE64 = $(OBJECTS_FINDDUPE:.o=.o64)
 
-.c.o:
-	$(CC) -c $(CFLAGS) $<
+%.o : %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
+%.o64 : %.c
+	$(CC) -c $(CFLAGS) -m64 -o $@ $<
 
 finddupe.exe: $(OBJECTS_FINDDUPE)
 	$(LINKER) $(LDFLAGS) -o $@ $(OBJECTS_FINDDUPE)
+
+finddupe64.exe: $(OBJECTS_FINDDUPE64)
+	$(LINKER) $(LDFLAGS) -m64 -o $@ $(OBJECTS_FINDDUPE64)
 
 # for testing only
 myglob.exe: myglob.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -DDEBUGGING -o $@ $<
 
 clean:
-	rm *.o *.exe
+	rm *.o *.o64 *.exe

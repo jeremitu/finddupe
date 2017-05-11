@@ -31,6 +31,8 @@ typedef struct {
     int attrib;
 }FileEntry;
 
+int MaxDepth; // max depth for Recurse, 0 = inf
+
 #ifdef DEBUGGING
 //--------------------------------------------------------------------------------
 // Dummy function to show operation.
@@ -109,7 +111,7 @@ int IsReparsePoint(TCHAR * DirName)
 //--------------------------------------------------------------------------------
 // Decide how a particular pattern should be handled, and call function for each.
 //--------------------------------------------------------------------------------
-static void Recurse(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const TCHAR * FileName))
+static void Recurse(const TCHAR * Pattern, int Depth, int FollowReparse, void (*FileFuncParm)(const TCHAR * FileName))
 {
     TCHAR BasePattern[_MAX_PATH];
     TCHAR MatchPattern[_MAX_PATH];
@@ -126,6 +128,9 @@ static void Recurse(const TCHAR * Pattern, int FollowReparse, void (*FileFuncPar
     #ifdef DEBUGGING
         _tprintf(_T("\nCalled with '%s'\n"),Pattern);
     #endif
+
+    if (MaxDepth && Depth++ > MaxDepth)
+        return;
 
 DoExtraLevel:
     MatchDirs = TRUE;
@@ -232,7 +237,7 @@ DoExtraLevel:
                 if (CatPath(CombinedName, BasePattern, FileList[a].Name)){
                     if (FollowReparse || !IsReparsePoint(CombinedName)){
                         _tcscat(CombinedName, PatCopy+PatternEnd);
-                        Recurse(CombinedName, FollowReparse, FileFuncParm);
+                        Recurse(CombinedName, Depth, FollowReparse, FileFuncParm);
                     }
                 }
             }else{
@@ -293,14 +298,14 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
         }
         if (FileStat.st_mode & 040000){
             if (CatPath(PathCopy, PathCopy, _T("**"))){
-                Recurse(PathCopy, FollowReparse, FileFuncParm);
+                Recurse(PathCopy, 1, FollowReparse, FileFuncParm);
             }
         }else{
             FileFuncParm(PathCopy);
         }
     }else{
         // A wildcard was specified.
-        Recurse(PathCopy, FollowReparse, FileFuncParm);
+        Recurse(PathCopy, 1, FollowReparse, FileFuncParm);
     }
     return 0;
 }

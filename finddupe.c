@@ -2,13 +2,13 @@
 // Find duplicate files and hard link, delete, or write batch files to do the same.
 // Also includes a separate option to scan for and enumerate hardlinks in the search space.
 //
-// Version 1.23
+// Version 1.25
 //
 // Matthias Wandel Oct 2006 - Aug 2010
 // MinGW Unicode port Jarek Jurasz March 2017
 //--------------------------------------------------------------------------
 
-#define VERSION _T("1.24")
+#define VERSION _T("1.25")
 #include "tchar.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +62,7 @@ struct {
     int HardlinkGroups;
     int CantReadFiles;
     int ZeroLengthFiles;
+    int IgnoredFiles;
     __int64 TotalBytes;
     __int64 DuplicateBytes;
 }DupeStats;
@@ -86,7 +87,11 @@ int ShowProgress = 1;      // Show progressing file count...
 int HideCantReadMessage= 0;// Hide the can't read file error
 int SkipZeroLength = 1;    // Ignore zero length files.
 int ProgressIndicatorVisible = 0; // Weither a progress indicator needs to be overwritten.
-int FollowReparse = 0;     // Wether to follow reparse points (like unix softlinks for NTFS)
+int FollowReparse = 0;     // Whether to follow reparse points (like unix softlinks for NTFS)
+TCHAR* IgnPats[20];        // Substrings to skip (can be multiple - like .git, .svn, .bak)
+int NumIgnPats = 0;        // Number of active skip substrings
+extern int MaxDepth = 0;   // Max recursion depth (0 = inf)
+
 
 int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const TCHAR * FileName));
 
@@ -407,6 +412,15 @@ static void ProcessFile(const TCHAR * FileName)
     unsigned FileSize;
     Checksum_t CheckSum;
     struct _stat FileStat;
+    int i;
+
+    /* skip if contains substrings */
+    for (i = 0; i < NumIgnPats; i++)
+        if (_tcsstr(FileName, IgnPats[i]) )
+        {
+            DupeStats.IgnoredFiles++;
+            return;
+        }
 
     FileData_t ThisFile;
     memset(&ThisFile, 0, sizeof(ThisFile));
@@ -577,11 +591,13 @@ static void Usage (void)
            " -j              Follow NTFS junctions and reparse points (off by default)\n"
            " -listlink       hardlink list mode.  Not valid with -del, -bat, -hardlink,\n"
            "                 or -rdonly, options\n"
-           " filepat         Pattern for files.  Examples:\n"
+           " -ign <substr>   Ignore file pattern, like .git, .svn or .bak (can be repeated)\n"
+           " -depth <num>    Maximum recursion depth, default 0 = infinite\n"
+           " <filepat>       Pattern for files.  Examples:\n"
            "                  c:\\**        Match everything on drive C\n"
            "                  c:\\**\\*.jpg  Match only .jpg files on drive C\n"
            "                  **\\foo\\**    Match any path with component foo\n"
-           "                                from current directory down\n"
+           "                               from current directory down\n"
 
            ));
     exit(EXIT_FAILURE);
@@ -638,6 +654,10 @@ int _tmain (int argc, TCHAR **argv)
             ShowProgress = 0;
         }else if (!_tcscmp(arg,_T("-j"))){
             FollowReparse = 1;
+        }else if (!_tcscmp(arg,_T("-ign"))){
+            IgnPats[NumIgnPats++] = argv[++argn];
+        }else if (!_tcscmp(arg,_T("-depth"))){
+            MaxDepth = _tstoi(argv[++argn]);
         }else{
             _tprintf(_T("Argument '%s' not understood.  Use -h for help.\n"),arg);
             exit(-1);
@@ -756,6 +776,9 @@ int _tmain (int argc, TCHAR **argv)
     }
     if (DupeStats.ZeroLengthFiles){
         _tprintf(_T("  %d files of zero length were skipped\n"),DupeStats.ZeroLengthFiles);
+    }
+    if (DupeStats.IgnoredFiles){
+        _tprintf(_T("  %d files were ignored\n"),DupeStats.IgnoredFiles);
     }
     if (DupeStats.CantReadFiles){
         _tprintf(_T("  %d files could not be opened\n"),DupeStats.CantReadFiles);
