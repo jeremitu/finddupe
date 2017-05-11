@@ -3,7 +3,7 @@ Unicode / MinGW port of [finddupe](http://www.sentex.net/~mwandel/finddupe/) dup
 
 ## Reasons
 I really like finddupe when I look for duplicate files. It is fast and clever, it clusters the match candidates according to the checksum signature of the first 32k. It can also find NTFS hard links, which is very difficult otherwise. Please refer to [Matthias site](http://www.sentex.net/~mwandel/finddupe/) for full description. My favourites are
-`finddupe c:\MyBooks` and `finddupe -listlink c:\MyBooks`.  
+`finddupe -hardlink c:\MyBooks` to remove duplicates in a big e-book collection and `finddupe -listlink c:\MyBooks` to list them.
 I provide more real-life examples on [my homepage](https://www.jurasz.de/finddupe).
 
 However, his current version 1.23 is ASCII-only and fails on non-ASCII filenames, as is often the case with books.
@@ -11,11 +11,11 @@ However, his current version 1.23 is ASCII-only and fails on non-ASCII filenames
 ## Port
 I ported finddupe to Unicode (actually UTF-16) and MinGW as version 1.24. I used `tchar.h` wrapper, so ASCII build is still possible. It works for me, but some more testing is desirable. 
 
-In version 1.25 I added -ign and -depth arguments to ignore some files.
-
 I hate this wchar_t stuff, but I really like finddupe. Why didn't Microsoft go for UTF-8? [utf8everywhere.org](http://utf8everywhere.org/) makes an interesting reading.
 
 MinGW-w64 is required for Unicode wmain as described [here](https://sourceforge.net/p/mingw-w64/wiki2/Unicode%20apps/). I used Ruby DevKit-mingw64-32-4.7.2 and DevKit-mingw64-64-4.7-2 from [rubyinstaller.org](http://rubyinstaller.org/downloads/).   
+
+In version 1.25 I added -ign and -depth arguments to ignore some files.
 
 I provide [binary for Win32](finddupe.exe) and [binary for Win64](finddupe64.exe), so you do not have to compile yourself.
 

@@ -92,6 +92,8 @@ TCHAR* IgnPats[20];        // Substrings to skip (can be multiple - like .git, .
 int NumIgnPats = 0;        // Number of active skip substrings
 extern int MaxDepth = 0;   // Max recursion depth (0 = inf)
 
+#define NELEMS(arr) (sizeof(arr)/sizeof(*arr))
+
 
 int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const TCHAR * FileName));
 
@@ -593,7 +595,7 @@ static void Usage (void)
            "                 or -rdonly, options\n"
            " -ign <substr>   Ignore file pattern, like .git, .svn or .bak (can be repeated)\n"
            " -depth <num>    Maximum recursion depth, default 0 = infinite\n"
-           " <filepat>       Pattern for files.  Examples:\n"
+           "  <filepat>      Pattern for files.  Examples:\n"
            "                  c:\\**        Match everything on drive C\n"
            "                  c:\\**\\*.jpg  Match only .jpg files on drive C\n"
            "                  **\\foo\\**    Match any path with component foo\n"
@@ -655,7 +657,13 @@ int _tmain (int argc, TCHAR **argv)
         }else if (!_tcscmp(arg,_T("-j"))){
             FollowReparse = 1;
         }else if (!_tcscmp(arg,_T("-ign"))){
-            IgnPats[NumIgnPats++] = argv[++argn];
+            if (NumIgnPats < NELEMS(IgnPats) - 2)
+              IgnPats[NumIgnPats++] = argv[++argn];
+            else
+            {
+              _tprintf(_T("Too many -ign patterns\n"));
+              exit(EXIT_FAILURE);
+            }
         }else if (!_tcscmp(arg,_T("-depth"))){
             MaxDepth = _tstoi(argv[++argn]);
         }else{
