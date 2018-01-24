@@ -273,6 +273,9 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
 {
     int a;
     TCHAR PathCopy[_MAX_PATH];
+#if DEBUGGING
+    _tprintf(_T("MyGlob: %s\n"), Pattern);
+#endif
 
     _tcsncpy(PathCopy, Pattern, _MAX_PATH-1);
     a = _tcslen(PathCopy);
@@ -287,8 +290,12 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
         if (PathCopy[a] == '*' || PathCopy[a] == '?') break; // Contains wildcards
         if (PathCopy[a] == '\0') break;
     }
-
-    if (PathCopy[a] == '\0'){
+    if (PathCopy[0] == '\\' && PathCopy[1] == '\\') {
+        // UNC path - perhaps a directory.
+        //a = _tcslen(PathCopy);
+        Recurse(PathCopy, 1, FollowReparse, FileFuncParm);
+    }
+    else if (PathCopy[a] == '\0'){
         // No wildcards were specified.  Do a whole tree, or file.
         struct _stat FileStat;
         if (_tstat(PathCopy, &FileStat) != 0){
@@ -296,7 +303,10 @@ int MyGlob(const TCHAR * Pattern, int FollowReparse, void (*FileFuncParm)(const 
             return -1;
             _tprintf(_T("Stat failed\n"));
         }
-        if (FileStat.st_mode & 040000){
+        else if (FileStat.st_mode & 040000){
+#if DEBUGGING
+            _tprintf(_T("DIR %s\n"), PathCopy);
+#endif
             if (CatPath(PathCopy, PathCopy, _T("**"))){
                 Recurse(PathCopy, 1, FollowReparse, FileFuncParm);
             }

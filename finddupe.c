@@ -90,7 +90,7 @@ int ProgressIndicatorVisible = 0; // Weither a progress indicator needs to be ov
 int FollowReparse = 0;     // Whether to follow reparse points (like unix softlinks for NTFS)
 TCHAR* IgnPats[20];        // Substrings to skip (can be multiple - like .git, .svn, .bak)
 int NumIgnPats = 0;        // Number of active skip substrings
-extern int MaxDepth = 0;   // Max recursion depth (0 = inf)
+extern int MaxDepth;       // Max recursion depth (0 = inf)
 
 #define NELEMS(arr) (sizeof(arr)/sizeof(*arr))
 
@@ -246,6 +246,7 @@ dont_read:
             ClearProgressInd();
             _tprintf(_T("Skipping duplicate readonly file '%s'\n"),
                         ThisFile.FileName);
+            /* DupeStats.IgnoredFiles++; */
             return 1;
         }
         if (MakeHardLinks || DelDuplicates){
